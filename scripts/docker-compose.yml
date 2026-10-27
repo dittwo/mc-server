@@ -37,3 +37,82 @@ services:
     depends_on:
       crafty:
         condition: service_healthy
+
+  # ── Monitoring ──────────────────────────────────────────
+  # Only Grafana is public (through Caddy). Prometheus and the
+  # exporters stay on the internal Docker network.
+
+  prometheus:
+    image: prom/prometheus:v3.13.4
+    container_name: prometheus
+    restart: always
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=2GB
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /home/mcs/docker/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /home/mcs/docker/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - /home/mcs/docker/monitoring/prometheus-data:/prometheus
+
+  # Host network so it reports the VM's real interfaces. Port 9100 is
+  # not in the GCP firewall, so it is unreachable from the internet.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    container_name: node-exporter
+    restart: always
+    network_mode: host
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --collector.textfile.directory=/host/var/lib/node_exporter/textfile
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+)($|/)
+    volumes:
+      - /:/host:ro,rslave
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.6
+    container_name: cadvisor
+    restart: always
+    privileged: true
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  mc-monitor:
+    image: itzg/mc-monitor:1.18.3
+    container_name: mc-monitor
+    restart: always
+    command: export-for-prometheus
+    environment:
+      - EXPORT_SERVERS=crafty_container:25565
+      - TIMEOUT=20s
+
+  grafana:
+    image: grafana/grafana:13.2.4
+    container_name: grafana
+    restart: always
+    env_file:
+      - /home/mcs/docker/monitoring/grafana.env
+    environment:
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/terramine-dashboard.json
+    volumes:
+      - /home/mcs/docker/monitoring/grafana-data:/var/lib/grafana
+      - /home/mcs/docker/monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - /home/mcs/docker/monitoring/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/terramine.yml:ro
+      - /home/mcs/docker/monitoring/terramine-dashboard.json:/var/lib/grafana/dashboards/terramine-dashboard.json:ro
+    depends_on:
+      - prometheus

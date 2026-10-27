@@ -80,7 +80,43 @@ ${crafty_domain} {
         flush_interval -1
     }
 }
+
+${grafana_domain} {
+    reverse_proxy grafana:3000
+}
 CADDYFILE
+
+# ── Monitoring config (Prometheus, Grafana, alert rules) ──
+mkdir -p /home/mcs/docker/monitoring/prometheus-data \
+         /home/mcs/docker/monitoring/grafana-data \
+         /var/lib/node_exporter/textfile
+
+cat > /home/mcs/docker/monitoring/prometheus.yml << 'PROMCFG'
+${prometheus_config}
+PROMCFG
+
+cat > /home/mcs/docker/monitoring/alerts.yml << 'PROMALERTS'
+${prometheus_alerts}
+PROMALERTS
+
+cat > /home/mcs/docker/monitoring/grafana-datasource.yml << 'GFDS'
+${grafana_datasource}
+GFDS
+
+cat > /home/mcs/docker/monitoring/grafana-dashboards.yml << 'GFDASHPROV'
+${grafana_dashboards}
+GFDASHPROV
+
+cat > /home/mcs/docker/monitoring/terramine-dashboard.json << 'GFDASH'
+${grafana_dashboard_json}
+GFDASH
+
+cat > /home/mcs/docker/monitoring/grafana.env << 'GFENV'
+GF_SECURITY_ADMIN_USER=admin
+GF_SECURITY_ADMIN_PASSWORD=${grafana_admin_password}
+GF_SERVER_ROOT_URL=https://${grafana_domain}
+GFENV
+chmod 600 /home/mcs/docker/monitoring/grafana.env
 
 cat > /home/mcs/docker/docker-compose.yml << 'COMP'
 ${docker_compose}
@@ -137,6 +173,9 @@ fi
 
 chown -R mcs:mcs /home/mcs/docker
 chmod 775 /home/mcs/docker/import/upload
+# Prometheus runs as nobody (65534) and Grafana as uid 472 inside their images.
+chown -R 65534:65534 /home/mcs/docker/monitoring/prometheus-data
+chown -R 472:472 /home/mcs/docker/monitoring/grafana-data
 
 cat > /usr/local/bin/mc-restore.sh << 'RESTORE'
 ${mc_restore}
@@ -707,3 +746,4 @@ chown mcs:mcs "$DEPLOY_MARKER"
 
 echo "Deployment complete at $(date)."
 echo "Crafty credentials stored at: /home/mcs/docker/config/crafty-login.txt"
+echo "Grafana dashboard: https://${grafana_domain} (user: admin)"

@@ -93,4 +93,19 @@ HOME=/home/mcs aws s3 ls "s3://$R2_BUCKET/backups/" --endpoint-url "$R2_ENDPOINT
 # ── Update tracking file ─────────────────────────────────
 echo "$NEWEST_FILE" > "$TRACKING_FILE"
 chown mcs:mcs "$TRACKING_FILE" 2>/dev/null || true
+
+# ── Export metrics for Prometheus (node_exporter textfile collector) ──
+# Written atomically so node_exporter never reads a half-written file.
+METRICS_DIR=/var/lib/node_exporter/textfile
+if [ -d "$METRICS_DIR" ]; then
+  cat > "$METRICS_DIR/mc_backup.prom.tmp" << METRICS
+# HELP mc_backup_last_success_timestamp_seconds Unix time of the last successful backup upload to R2.
+# TYPE mc_backup_last_success_timestamp_seconds gauge
+mc_backup_last_success_timestamp_seconds $(date +%s)
+# HELP mc_backup_last_size_bytes Size of the last backup uploaded to R2.
+# TYPE mc_backup_last_size_bytes gauge
+mc_backup_last_size_bytes $ZIPSIZE
+METRICS
+  mv "$METRICS_DIR/mc_backup.prom.tmp" "$METRICS_DIR/mc_backup.prom"
+fi
 echo "[sync $(date '+%Y-%m-%d %H:%M:%S')] Sync complete. Tracking: $NEWEST_FILE"

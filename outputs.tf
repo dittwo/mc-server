@@ -13,6 +13,11 @@ output "crafty_url" {
   value       = "https://${var.crafty_subdomain}.${var.domain}"
 }
 
+output "grafana_url" {
+  description = "Grafana monitoring dashboard (user: admin, password: grafana_admin_password)"
+  value       = "https://${var.grafana_subdomain}.${var.domain}"
+}
+
 output "crafty_password" {
   description = "Run this to get Crafty credentials (or tail logs if not ready)"
   value       = "gcloud compute ssh ${google_compute_instance.minecraft.name} --zone ${google_compute_instance.minecraft.zone} --command 'if sudo test -f /home/mcs/docker/config/crafty-login.txt; then sudo cat /home/mcs/docker/config/crafty-login.txt; else echo \"Crafty password is not ready yet. Recent startup logs:\"; sudo tail -n 80 /var/log/mc-startup.log; fi'"

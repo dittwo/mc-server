@@ -1,0 +1,42 @@
+groups:
+  - name: terramine
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scrape target {{ $labels.job }} is down"
+
+      - alert: MinecraftDown
+        expr: minecraft_status_healthy == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Minecraft server is not answering status pings"
+
+      - alert: HighMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory usage above 90% ({{ $value | printf \"%.0f\" }}%)"
+
+      - alert: DiskAlmostFull
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root disk above 85% ({{ $value | printf \"%.0f\" }}%)"
+
+      - alert: BackupStale
+        expr: time() - mc_backup_last_success_timestamp_seconds > 26 * 3600
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No off-site backup uploaded to R2 in over 26 hours"

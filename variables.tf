@@ -44,3 +44,18 @@ variable "crafty_subdomain" {
   default     = "crafty"
   description = "Subdomain for Crafty panel, e.g. crafty → crafty.example.com"
 }
+
+variable "grafana_subdomain" {
+  default     = "grafana"
+  description = "Subdomain for the Grafana dashboard, e.g. grafana → grafana.example.com"
+}
+
+variable "grafana_admin_password" {
+  description = "Admin password for Grafana (user: admin)"
+  sensitive   = true
+
+  validation {
+    condition     = length(var.grafana_admin_password) >= 12
+    error_message = "grafana_admin_password must be at least 12 characters."
+  }
+}

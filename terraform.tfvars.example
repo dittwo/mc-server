@@ -14,3 +14,6 @@ cloudflare_zone_id   = "your-cloudflare-zone-id"
 domain              = "example.com"
 minecraft_subdomain = "play"
 crafty_subdomain    = "crafty"
+
+grafana_subdomain      = "grafana"
+grafana_admin_password = "change-me-to-a-long-password"

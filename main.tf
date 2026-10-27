@@ -77,6 +77,14 @@ resource "google_compute_instance" "minecraft" {
       mc_restore     = file("${path.module}/scripts/mc-restore.sh")
       mc_backup_sync = file("${path.module}/scripts/mc-backup-sync.sh")
       crafty_domain  = "${var.crafty_subdomain}.${var.domain}"
+
+      grafana_domain         = "${var.grafana_subdomain}.${var.domain}"
+      grafana_admin_password = var.grafana_admin_password
+      prometheus_config      = file("${path.module}/scripts/monitoring/prometheus.yml")
+      prometheus_alerts      = file("${path.module}/scripts/monitoring/alerts.yml")
+      grafana_datasource     = file("${path.module}/scripts/monitoring/grafana-datasource.yml")
+      grafana_dashboards     = file("${path.module}/scripts/monitoring/grafana-dashboards.yml")
+      grafana_dashboard_json = file("${path.module}/scripts/monitoring/terramine-dashboard.json")
     })
   })
 }
